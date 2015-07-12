@@ -1,18 +1,26 @@
 package checks
 
 import (
+	"crypto/tls"
 	"fmt"
-	"github.com/daemonl/informer/reporter"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/daemonl/informer/reporter"
 )
 
 type SearchCheck struct {
 	Url          string        `xml:"url,attr"`
+	Insecure     bool          `xml:"insecure,attr"`
 	Contains     []string      `xml:"string"`
 	CustomClient *CustomClient `xml:"client"`
+	Cookies      []struct {
+		Name  string `xml:"name,attr"`
+		Value string `xml:",innerxml"`
+	} `xml:"cookie"`
 }
 
 func (t *SearchCheck) RunCheck(r *reporter.Reporter) error {
@@ -21,7 +29,20 @@ func (t *SearchCheck) RunCheck(r *reporter.Reporter) error {
 	if err != nil {
 		return err
 	}
-	resp, err := client.Get(t.Url)
+	req, err := http.NewRequest("GET", t.Url, nil)
+	if err != nil {
+		return err
+	}
+	for _, cookie := range t.Cookies {
+		req.AddCookie(&http.Cookie{
+			Name:  cookie.Name,
+			Value: strings.TrimSpace(cookie.Value),
+		})
+	}
+	if t.Insecure && strings.HasPrefix(t.Url, "https://") {
+		client.Transport = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		switch err := err.(type) {
 		case *url.Error:
