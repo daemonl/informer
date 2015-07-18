@@ -1,20 +1,16 @@
-package checks
+package server
 
 import (
 	"fmt"
-	"github.com/daemonl/informer/reporter"
-	"os/exec"
+	"log"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/daemonl/informer/reporter"
 )
 
-type DiskCheck struct {
-	HostName   string
-	CheckDisks []DiskCheckDisk
-}
-
-type DiskCheckDisk struct {
+type Disk struct {
 	Filesystem string   `xml:"filesystem,attr"`
 	MinBytes   *uint64  `xml:"minBytes"`
 	MinPercent *float64 `xml:"minPercent"`
@@ -29,15 +25,17 @@ type DiskStatus struct {
 
 var reSpace *regexp.Regexp = regexp.MustCompile(" +")
 
-func (check *DiskCheck) RunCheck(reporter *reporter.Reporter) (err error) {
+func (s *Server) RunDiskCheck(reporter *reporter.Reporter) (err error) {
 
-	disks, err := check.GetDisks()
+	disks, err := s.GetDisks()
 	if err != nil {
 		return err
 	}
 
+	log.Println(disks)
+
 checkDisks:
-	for _, checkDisk := range check.CheckDisks {
+	for _, checkDisk := range s.Disks {
 		for _, disk := range disks {
 			if disk.Filesystem == checkDisk.Filesystem {
 
@@ -76,18 +74,21 @@ checkDisks:
 
 }
 
-func (check *DiskCheck) GetDisks() (disks []*DiskStatus, err error) {
+func (server *Server) GetDisks() (disks []*DiskStatus, err error) {
 
-	// ssh chaos df
-	args := []string{
-		check.HostName,
-		"df",
-		"-P",
-	}
-	cmd := exec.Command("ssh", args...)
+	cmd := server.RPC("df", "-P")
+	/*
+		// ssh chaos df
+		args := []string{
+			check.HostName,
+			"df",
+			"-P",
+		}
+		cmd := exec.Command("ssh", args...)
+	*/
 	resBytes, err := cmd.CombinedOutput()
 	if err != nil {
-		err := fmt.Errorf(string(resBytes))
+		err := fmt.Errorf(err.Error() + ": " + string(resBytes))
 		return disks, err
 	}
 
