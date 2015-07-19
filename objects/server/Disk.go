@@ -16,13 +16,6 @@ type Disk struct {
 	MinPercent *float64 `xml:"minPercent"`
 }
 
-type DiskStatus struct {
-	Filesystem string
-	Used       uint64
-	Available  uint64
-	MountPoint string
-}
-
 var reSpace *regexp.Regexp = regexp.MustCompile(" +")
 
 func (s *Server) RunDiskCheck(reporter *reporter.Reporter) (err error) {
