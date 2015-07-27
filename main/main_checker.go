@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/daemonl/informer/objects"
 	"github.com/daemonl/informer/reporter"
@@ -14,10 +15,12 @@ import (
 
 var configDir string
 var runGroup string
+var dryRun bool
 
 func init() {
 	flag.StringVar(&configDir, "config", "/etc/informer/conf.d/", "Config directory")
 	flag.StringVar(&runGroup, "group", "", "When set, only run this group, otherwise runs root")
+	flag.BoolVar(&dryRun, "dry", false, "When true, won't send mail or API calls")
 }
 
 func flagWg(wg *sync.WaitGroup, donechan chan bool) {
@@ -56,47 +59,53 @@ func main() {
 
 	core, err := loadConfig(configDir)
 	if err != nil {
-		fmt.Fprint(os.Stderr, err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 		return
 	}
 
-	list := []objects.Checks{}
+	list := map[string][]objects.Group{}
 
-	if runGroup == "" {
-		list = append(list, core.Checks)
-	} else {
-		for _, group := range core.Groups {
-			if runGroup == "all" || runGroup == group.Name {
-				list = append(list, group.Checks)
+	for _, group := range core.Groups {
+		// Matches "", which is 'unspecified'
+		if runGroup == "all" || runGroup == group.RunGroup {
+			_, ok := list[group.SyncGroup]
+			if !ok {
+				list[group.SyncGroup] = []objects.Group{}
 			}
+			list[group.SyncGroup] = append(list[group.SyncGroup], group)
 		}
 	}
 
+	times := map[string]int64{}
 	wg := sync.WaitGroup{}
-	for _, group := range list {
-		for _, server := range group.Servers {
-			wg.Add(1)
-			go func(server objects.ServerCheck) {
-				defer wg.Done()
-				r := reporter.GetRoot(server.Name)
-				server.RunChecks(r)
-				server.DoWarnings(core, r)
-			}(server)
-		}
+	for name, sg := range list {
+		//fmt.Printf("Run sync %s - %d groups\n", name, len(sg))
+		wg.Add(1)
+		go func(name string, sg []objects.Group) {
+			defer wg.Done()
+			start := time.Now().Unix()
+			defer func() { times[name] = time.Now().Unix() - start }()
+			for _, group := range sg {
+				r := reporter.GetRoot(group.Name)
+				for _, check := range group.Checks {
+					err := check.RunCheck(r)
+					if err != nil {
+						r.AddError(err)
+					}
+				}
+				r.DumpReport()
+				if !dryRun {
+					core.DoWarnings(r, &group.Informants)
+				}
+			}
+
+		}(name, sg)
 	}
 	wg.Wait()
 
-	for _, group := range list {
-		for _, ds := range group.Data {
-			r := reporter.GetRoot(ds.Name)
-			ds.RunChecks(r)
-			ds.DoWarnings(core, r)
-		}
-		for _, site := range group.Sites {
-			r := reporter.GetRoot(site.Name)
-			site.RunChecks(r)
-			site.DoWarnings(core, r)
-		}
+	for name, seconds := range times {
+		fmt.Printf("%s took %d seconds\n", name, seconds)
 	}
+
 }

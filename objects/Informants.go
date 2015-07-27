@@ -16,9 +16,8 @@ type Informants struct {
 	} `xml:"api"`
 }
 
-func (i *Informants) DoWarnings(c *Core, r *reporter.Reporter) {
+func (core *Core) DoWarnings(r *reporter.Reporter, i *Informants) {
 
-	r.DumpReport()
 	warnings := r.CollectWarnings()
 	if len(warnings) < 1 {
 		return
@@ -27,10 +26,10 @@ func (i *Informants) DoWarnings(c *Core, r *reporter.Reporter) {
 	subject := r.Name
 	body := strings.Join(warnings, "\n")
 	for _, email := range i.Emails {
-		c.Mailer.SendEmail(email.Address, subject, body)
+		core.Mailer.SendEmail(email.Address, subject, body)
 	}
 	for _, api := range i.Apis {
-		DoApi(c, api.Name, subject, body)
+		DoApi(core, api.Name, subject, body)
 	}
 
 }

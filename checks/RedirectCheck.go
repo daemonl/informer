@@ -11,6 +11,10 @@ type RedirectCheck struct {
 	CustomClient *CustomClient `xml:"client"`
 }
 
+func (t *RedirectCheck) GetName() string {
+	return t.From
+}
+
 func (t *RedirectCheck) RunCheck(r *reporter.Reporter) error {
 	res := r.Report("CHECK REDIRECT %s => %s", t.From, t.To)
 	client := &http.Client{}

@@ -1,7 +1,9 @@
 package checks
 
 import (
+	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -23,13 +25,44 @@ type Pair struct {
 }
 
 type Request struct {
-	Url          string        `xml:"url,attr"`
+	URL          string        `xml:"url,attr"`
 	CustomClient *CustomClient `xml:"client"`
 	Method       string        `xml:"method,attr"`
 	FormVals     Pairs         `xml:"form"`
 	Body         string        `xml:"body"`
 	Cookies      Pairs         `xml:"cookie"`
 	Headers      Pairs         `xml:"header"`
+}
+
+func (r *Request) GetName() string {
+	return r.URL
+}
+
+func (r *Request) GetReader() (io.ReadCloser, error) {
+	resp, err := r.DoRequest()
+	if err != nil {
+		switch err := err.(type) {
+		case *url.Error:
+
+			switch err := err.Err.(type) {
+			case *net.OpError:
+
+				switch err := err.Err.(type) {
+				case *net.DNSError:
+					return nil, fmt.Errorf("DNS Lookup Error: %s", err.Err)
+				default:
+					return nil, err
+				}
+
+			default:
+				return nil, err
+			}
+
+		default:
+			return nil, err
+		}
+	}
+	return resp.Body, nil
 }
 
 func (r *Request) DoRequest() (*http.Response, error) {
@@ -57,7 +90,7 @@ func (r *Request) DoRequest() (*http.Response, error) {
 		body = strings.NewReader(r.Body)
 	}
 
-	req, err := http.NewRequest(r.Method, r.Url, body)
+	req, err := http.NewRequest(r.Method, r.URL, body)
 	if err != nil {
 		return nil, err
 	}

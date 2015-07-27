@@ -33,7 +33,7 @@ func (t *LogCheck) RunCheck(r *reporter.Reporter) error {
 	}
 
 	if len(t.QuietPeriod) > 0 {
-		res := r.Report("LOG CHECK %s", t.Url)
+		res := r.Report("LOG CHECK %s", t.GetName())
 		duration, err := time.ParseDuration(t.QuietPeriod)
 		if err != nil {
 			return err

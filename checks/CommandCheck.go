@@ -10,6 +10,10 @@ type CommandCheck struct {
 	Command          string `json:"command"`
 }
 
+func (t *CommandCheck) GetName() string {
+	return t.Command
+}
+
 func (t *CommandCheck) RunCheck(reporter *reporter.Reporter) error {
 	res := reporter.Report("Run command %s", t.Command)
 	c := exec.Command(t.WorkingDirectory + "/" + t.Command)
