@@ -39,11 +39,18 @@ func (r *Request) GetName() string {
 }
 
 func (r *Request) GetReader() (io.ReadCloser, error) {
+	reader, err := r.getReader()
+	if err != nil {
+		return nil, fmt.Errorf("%s: %s", r.URL, err.Error())
+	}
+	return reader, nil
+}
+
+func (r *Request) getReader() (io.ReadCloser, error) {
 	resp, err := r.DoRequest()
 	if err != nil {
 		switch err := err.(type) {
 		case *url.Error:
-
 			switch err := err.Err.(type) {
 			case *net.OpError:
 
