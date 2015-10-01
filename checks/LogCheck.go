@@ -2,6 +2,7 @@ package checks
 
 import (
 	"bufio"
+	"strings"
 	"time"
 
 	"github.com/daemonl/informer/reporter"
@@ -26,7 +27,8 @@ func (t *LogCheck) RunCheck(r *reporter.Reporter) error {
 
 	for scanner.Scan() {
 		str := scanner.Text()
-		t, _ := time.Parse(t.Format, str[0:len(t.Format)])
+		timeString := strings.Split(str, "-")[0]
+		t, _ := time.Parse(t.Format, timeString)
 		if t.After(lastTime) {
 			lastTime = t
 		}
