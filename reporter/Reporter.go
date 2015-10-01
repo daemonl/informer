@@ -1,6 +1,7 @@
 package reporter
 
 import "fmt"
+import "github.com/fatih/color"
 
 type Reporter struct {
 	Reports  []*Report
@@ -26,9 +27,9 @@ func GetRoot(name string) *Reporter {
 	}
 }
 
-func (r *Reporter) Spawn(name string) *Reporter {
+func (r *Reporter) Spawn(name string, params ...interface{}) *Reporter {
 	child := &Reporter{
-		Name:     name,
+		Name:     fmt.Sprintf(name, params...),
 		Reports:  []*Report{},
 		Errors:   []error{},
 		Parent:   r,
@@ -94,11 +95,17 @@ func (r *Reporter) writeReports(name string) {
 		fmt.Printf("%s ERR: %s\n", name, err.Error())
 	}
 	for _, report := range r.Reports {
-		stat := "PASS"
+		out := color.Output
+
+		stat := color.GreenString("PASS")
 		if report.Warn {
-			stat = "FAIL"
+			color.RedString("FAIL")
+		} else {
+			if report.Result == "" {
+				report.Result = "OK"
+			}
 		}
-		fmt.Printf("%s: %s \n   - %s - %s\n", name, report.Name, stat, report.Result)
+		fmt.Fprintf(out, "%s: %s \n   %s - %s\n", color.CyanString(name), report.Name, stat, report.Result)
 	}
 	for _, c := range r.Children {
 		c.writeReports(name + "." + c.Name)

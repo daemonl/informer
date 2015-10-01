@@ -16,18 +16,21 @@ import (
 	"strings"
 
 	"github.com/daemonl/informer/remote/commands"
+	"github.com/daemonl/informer/remote/service"
 )
 
 var configFilename string
 
 func init() {
-	flag.StringVar(&configFilename, "config", "config.json", "The config file")
+	flag.StringVar(&configFilename, "config", "config.xml", "The config file")
 }
 
 type Config struct {
-	ServerCertificate string `xml:"serverCertificate" json:"serverCertificate"`
-	ServerPrivate     string `xml:"serverPrivate" json:"serverPrivate"`
-	BindAddress       string `xml:"bindAddress" json:"bindAddress"`
+	ServerCertificate string           `xml:"serverCertificate" json:"serverCertificate"`
+	CACertificate     string           `xml:"CA" json:"caCertificate"`
+	ServerPrivate     string           `xml:"serverPrivate" json:"serverPrivate"`
+	BindAddress       string           `xml:"bindAddress" json:"bindAddress"`
+	Services          service.Services `xml:"service"`
 }
 
 func loadConfig(configFilename string) (*Config, error) {
@@ -111,11 +114,16 @@ func (c Command) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func serve(config *Config) error {
-	http.Handle("/df", &Command{CommandRunner: &commands.DiskCommand{}})
+	http.Handle("/df", Command{CommandRunner: &commands.DiskCommand{}})
+	http.Handle("/service/", config.Services)
+
+	if config.ServerCertificate == "" {
+		return http.ListenAndServe(config.BindAddress, nil)
+	}
 
 	certFile := os.ExpandEnv(config.ServerCertificate)
 	keyFile := os.ExpandEnv(config.ServerPrivate)
-	caCertFile := os.ExpandEnv(config.ServerCertificate)
+	caCertFile := os.ExpandEnv(config.CACertificate)
 
 	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
