@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/daemonl/informer/crosscheck"
 	"github.com/daemonl/informer/objects"
 	"github.com/daemonl/informer/reporter"
 
@@ -62,6 +63,18 @@ func main() {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 		return
+	}
+
+	if core.Crosscheck != nil {
+		r := reporter.GetRoot("Crosscheck")
+		elected := crosscheck.Crosscheck(core.Crosscheck, r)
+		r.DumpReport()
+		if !dryRun {
+			core.DoWarnings(r, &core.Admins)
+		}
+		if !elected {
+			return
+		}
 	}
 
 	list := map[string][]objects.Group{}

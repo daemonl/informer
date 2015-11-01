@@ -5,14 +5,17 @@ import (
 	"fmt"
 
 	"github.com/daemonl/informer/checks"
+	"github.com/daemonl/informer/crosscheck"
 	"github.com/daemonl/informer/reporter"
 )
 
 type Core struct {
 	Mailer *Mailer     `xml:"smtp"`
 	Apis   []InformAPI `xml:"api"`
+	Admins Informants  `xml:"admins"`
 	Group
-	Groups []Group `xml:"group"`
+	Groups     []Group              `xml:"group"`
+	Crosscheck *crosscheck.CXConfig `xml:"crosscheck"`
 }
 
 type Group struct {
