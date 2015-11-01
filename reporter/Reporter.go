@@ -1,6 +1,7 @@
 package reporter
 
 import "fmt"
+
 import "github.com/fatih/color"
 
 type Reporter struct {
@@ -99,7 +100,7 @@ func (r *Reporter) writeReports(name string) {
 
 		stat := color.GreenString("PASS")
 		if report.Warn {
-			color.RedString("FAIL")
+			stat = color.RedString("FAIL")
 		} else {
 			if report.Result == "" {
 				report.Result = "OK"
