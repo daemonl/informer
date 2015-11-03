@@ -10,12 +10,12 @@ import (
 )
 
 type Core struct {
-	Mailer *Mailer     `xml:"smtp"`
-	Apis   []InformAPI `xml:"api"`
-	Admins Informants  `xml:"admins"`
-	Group
-	Groups     []Group              `xml:"group"`
+	Mailer     *Mailer              `xml:"smtp"`
+	Apis       []InformAPI          `xml:"api"`
+	Admins     Informants           `xml:"admins"`
 	Crosscheck *crosscheck.CXConfig `xml:"crosscheck"`
+	Group
+	Groups []Group `xml:"group"`
 }
 
 type Group struct {
