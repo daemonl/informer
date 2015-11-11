@@ -4,7 +4,9 @@ import (
 	"encoding/xml"
 	"flag"
 	"fmt"
+	"log"
 	"os"
+	"sort"
 	"time"
 
 	"github.com/daemonl/informer/crosscheck"
@@ -29,6 +31,12 @@ func flagWg(wg *sync.WaitGroup, donechan chan bool) {
 	donechan <- true
 }
 
+type FilesByName []os.FileInfo
+
+func (s FilesByName) Len() int           { return len(s) }
+func (s FilesByName) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s FilesByName) Less(i, j int) bool { return s[i].Name() < s[j].Name() }
+
 func loadConfig(dirName string) (*objects.Core, error) {
 	dir, err := os.Open(os.ExpandEnv(dirName))
 	if err != nil {
@@ -40,6 +48,7 @@ func loadConfig(dirName string) (*objects.Core, error) {
 	if err != nil {
 		return nil, err
 	}
+	sort.Sort(FilesByName(files))
 	for _, fInfo := range files {
 		file, err := os.Open(dirName + fInfo.Name())
 		if err != nil {
@@ -66,8 +75,14 @@ func main() {
 	}
 
 	if core.Crosscheck != nil {
+
+		configHash, err := crosscheck.XmlHash(core)
+		if err != nil {
+			log.Printf("Couldn't encode config: %s\n", err.Error())
+		}
+		log.Printf("Config %s\n", configHash)
 		r := reporter.GetRoot("Crosscheck")
-		elected := crosscheck.Crosscheck(core.Crosscheck, r)
+		elected := crosscheck.Crosscheck(core.Crosscheck, configHash, r)
 		r.DumpReport()
 		if !dryRun {
 			core.DoWarnings(r, &core.Admins)
