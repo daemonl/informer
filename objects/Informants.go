@@ -2,6 +2,7 @@ package objects
 
 import (
 	"log"
+	"os"
 	"strings"
 
 	"github.com/daemonl/informer/reporter"
@@ -25,6 +26,8 @@ func (core *Core) DoWarnings(r *reporter.Reporter, i *Informants) {
 
 	subject := r.Name
 	body := strings.Join(warnings, "\n")
+	hostname, _ := os.Hostname()
+	body = body + hostname
 	for _, email := range i.Emails {
 		core.Mailer.SendEmail(email.Address, subject, body)
 	}

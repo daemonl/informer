@@ -33,7 +33,12 @@ func Crosscheck(cfg *CXConfig, r *reporter.Reporter) bool {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(myID))
 	})
-	go http.ListenAndServe(cfg.Bind, mux)
+	go func() {
+		err := http.ListenAndServe(cfg.Bind, mux)
+		if err != nil {
+			log.Printf("Can't serve for CX: %s\n", err.Error())
+		}
+	}()
 
 	isLowest := true
 	allSuccess := true
@@ -76,5 +81,6 @@ func Crosscheck(cfg *CXConfig, r *reporter.Reporter) bool {
 		return true
 	}
 	log.Println("Not elected, I'm done")
+	time.Sleep(time.Second * 30)
 	return false
 }
