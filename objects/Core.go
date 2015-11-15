@@ -31,6 +31,7 @@ type Checks []Check
 type Checkable interface {
 	RunCheck(*reporter.Reporter) error
 	GetName() string
+	GetHash() string
 }
 
 type Check struct {

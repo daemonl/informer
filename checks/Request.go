@@ -19,6 +19,10 @@ func (pairs Pairs) Values() url.Values {
 	return v
 }
 
+func (pairs Pairs) HashBase() string {
+	return pairs.Values().Encode()
+}
+
 type Pair struct {
 	Name  string `xml:"name,attr"`
 	Value string `xml:",innerxml"`
@@ -32,6 +36,18 @@ type Request struct {
 	Body         string        `xml:"body"`
 	Cookies      Pairs         `xml:"cookie"`
 	Headers      Pairs         `xml:"header"`
+}
+
+func (r *Request) HashBase() string {
+	return strings.Join([]string{
+		r.URL,
+		r.Method,
+		r.Body,
+		r.FormVals.HashBase(),
+		r.Cookies.HashBase(),
+		r.Headers.HashBase(),
+		r.CustomClient.HashBase(),
+	}, " ")
 }
 
 func (r *Request) GetName() string {

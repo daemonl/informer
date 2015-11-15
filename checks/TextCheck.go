@@ -12,6 +12,10 @@ type TextCheck struct {
 	Contains []string `xml:"contains"`
 }
 
+func (t *TextCheck) GetHash() string {
+	return hashFromf("TEXT:%s %s", t.Contains, t.Request.HashBase())
+}
+
 func (t *TextCheck) RunCheck(r *reporter.Reporter) error {
 
 	reader, err := t.GetReader()

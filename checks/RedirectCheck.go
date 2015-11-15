@@ -11,6 +11,13 @@ type RedirectCheck struct {
 	CustomClient *CustomClient `xml:"client"`
 }
 
+func (t *RedirectCheck) GetHash() string {
+	return hashFromf("REDIRECT:%s>%s %s",
+		t.From,
+		t.To,
+		t.CustomClient.HashBase(),
+	)
+}
 func (t *RedirectCheck) GetName() string {
 	return t.From
 }

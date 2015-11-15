@@ -10,6 +10,12 @@ type CommandCheck struct {
 	Command          string `json:"command"`
 }
 
+func (t *CommandCheck) GetHash() string {
+	return hashFromf("CMD:%s %s",
+		t.WorkingDirectory,
+		t.Command,
+	)
+}
 func (t *CommandCheck) GetName() string {
 	return t.Command
 }

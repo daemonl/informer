@@ -14,6 +14,10 @@ type CertificateCheck struct {
 	Days uint64 `xml:"days"`
 }
 
+func (t *CertificateCheck) GetHash() string {
+	return hashFromf("CERT:%s %s", t.URL, t.Days)
+}
+
 func (t *CertificateCheck) GetName() string {
 	return t.URL
 }
