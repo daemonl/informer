@@ -5,9 +5,10 @@ import (
 	"math"
 	"net/url"
 	"strings"
+	"time"
+
+	"github.com/daemonl/informer/reporter"
 )
-import "github.com/daemonl/informer/reporter"
-import "time"
 
 type CertificateCheck struct {
 	URL  string `xml:"url,attr"`
