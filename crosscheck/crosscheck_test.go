@@ -11,7 +11,7 @@ func TestCrosscheck(t *testing.T) {
 
 	r := reporter.GetRoot("Test")
 
-	ports := []string{"55550", "55551", "55553"}
+	ports := []string{"55550"} //, "55551", "55553"}
 
 	allRemotes := make([]string, len(ports), len(ports))
 
@@ -20,25 +20,36 @@ func TestCrosscheck(t *testing.T) {
 	}
 
 	// Should all succeed, with one elected host
-	anyGotElected := false
 	w := sync.WaitGroup{}
-	for _, port := range ports {
+	results := make([]CrosscheckResult, len(ports), len(ports))
+	for i, port := range ports {
 		w.Add(1)
 		go func(port string) {
-			elected := Crosscheck(&CXConfig{
+			cxResult := Crosscheck(&CXConfig{
 				Bind:    ":" + port,
 				Remotes: allRemotes,
-			}, r.Spawn("Child %s", port))
-			if elected {
-				anyGotElected = true
+			}, "H", r.Spawn("Child %s", port))
+			results[i] = cxResult
+			if cxResult.Total != len(ports) {
+				t.Logf("Wrong total %d", cxResult.Total)
+				t.Fail()
 			}
 			w.Done()
+
 		}(port)
 	}
 	w.Wait()
-	if !anyGotElected {
-		t.Log("No host was elected")
-		t.Fail()
+
+	offsetExists := make([]bool, len(ports), len(ports))
+	for _, r := range results {
+		offsetExists[r.Offset] = true
+	}
+
+	for i, b := range offsetExists {
+		if !b {
+			t.Logf("Missing offset %d", i)
+			t.Fail()
+		}
 	}
 	r.DumpReport()
 
@@ -47,12 +58,12 @@ func TestCrosscheck(t *testing.T) {
 	for _, port := range ports {
 		w.Add(1)
 		go func(port string) {
-			elected := Crosscheck(&CXConfig{
+			cxResult := Crosscheck(&CXConfig{
 				Bind:     ":" + port,
 				Remotes:  allRemotes,
 				MaxTries: 1,
-			}, r.Spawn("Child %s", port))
-			if !elected {
+			}, "H", r.Spawn("Child %s", port))
+			if cxResult.AllResponded {
 				t.Log("Host not elected on fail")
 				t.Fail()
 			}

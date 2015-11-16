@@ -1,17 +1,18 @@
 package crosscheck
 
 import (
+	"bufio"
 	"crypto/md5"
-	"crypto/rand"
 	"encoding/base64"
 	"encoding/xml"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
-	"strings"
+	"net"
+	"sort"
 	"sync"
 	"time"
+
+	"code.google.com/p/go-uuid/uuid"
 
 	"github.com/daemonl/informer/reporter"
 )
@@ -33,56 +34,45 @@ func XmlHash(o interface{}) (string, error) {
 	return hash, nil
 }
 
-func Crosscheck(cfg *CXConfig, configHash string, r *reporter.Reporter) bool {
+type CrosscheckResult struct {
+	AllResponded bool
+	Total        int
+	Offset       int
+}
 
-	if cfg.MaxTries == 0 {
-		cfg.MaxTries = 3
-	}
+type InformerInstance struct {
+	Address  string
+	Hash     string
+	ConnTo   net.Conn
+	ConnFrom net.Conn
+	Error    error
+}
 
-	b := make([]byte, 21, 21)
-	rand.Read(b)
-	myID := base64.URLEncoding.EncodeToString(b)
-	log.Printf("My ID: %s\n", myID)
+func (i *InformerInstance) Connect(maxTries int) {
 
-	waitForOthers := &sync.WaitGroup{}
-	waitForOthers.Add(len(cfg.Remotes))
-
-	mux := http.NewServeMux()
-	// Serve and dial
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		id := r.URL.Query().Get("id")
-		log.Printf("Was pinged by %s\n", id)
-		waitForOthers.Done()
-		fmt.Fprintf(w, "%s\n%s", myID, configHash)
-
-	})
-
-	go func() {
-		err := http.ListenAndServe(cfg.Bind, mux)
-		if err != nil {
-			log.Printf("Can't serve for CX: %s\n", err.Error())
+	for try := 0; try < maxTries; try += 1 {
+		time.Sleep(time.Second * time.Duration(1+(5*try)))
+		i.ConnTo, i.Error = net.DialTimeout("tcp", i.Address, time.Second*3)
+		if i.Error == nil {
+			break
 		}
-	}()
 
-	isLowest := true
-	allSuccess := true
-remotes:
-	for _, remote := range cfg.Remotes {
-		reportRes := r.Report("CX %s", remote)
-		success := false
-		for try := 0; try < cfg.MaxTries; try += 1 {
-			time.Sleep(time.Second * time.Duration(1+(5*try)))
-			res, err := http.Get(fmt.Sprintf("%s?id=%s", remote, myID))
-			if err != nil {
-				log.Printf("Checking %s fail %d/%d\n%s", remote, try+1, cfg.MaxTries, err.Error())
-				continue
-			}
+		scanner := bufio.NewScanner(i.ConnTo)
+		if !scanner.Scan() {
+			err := fmt.Errorf("Couldn't scan line on connection")
+			i.ConnTo.Close()
+			break
+		}
+
+	}
+	return
+	/*
 			bodyBytes, _ := ioutil.ReadAll(res.Body)
 			parts := strings.Split(string(bodyBytes), "\n")
 			if len(parts) != 2 {
 				log.Println(string(bodyBytes))
 				reportRes.Fail("Didn't understand response")
-				allSuccess = false
+				cxResult.AllResponded = false
 				continue remotes
 
 			}
@@ -91,7 +81,7 @@ remotes:
 			reportRes.Pass("Got ID %s", remoteID)
 			if remoteConfig != configHash {
 				reportRes.Fail("Config mismach")
-				allSuccess = false
+				cxResult.AllResponded = false
 				continue remotes
 			}
 			success = true
@@ -100,29 +90,84 @@ remotes:
 				break
 			}
 			log.Printf("Remote %s answered (%s)\n", remote, remoteID)
-			if remoteID < myID {
-				isLowest = false
-			}
+			allHashes = append(allHashes, remoteID)
 			break
 		}
-		if !success {
-			reportRes.Fail("No connection established")
-			allSuccess = false
+	*/
+}
+
+func Crosscheck(cfg *CXConfig, configHash string, r *reporter.Reporter) (CrosscheckResult, error) {
+
+	cxResult := CrosscheckResult{
+		AllResponded: true,
+		Total:        len(cfg.Remotes),
+	}
+
+	if cfg.MaxTries == 0 {
+		cfg.MaxTries = 3
+	}
+
+	myID := uuid.New()
+	log.Printf("My ID: %s\n", myID)
+
+	l, err := net.Listen("tcp", cfg.Bind)
+	if err != nil {
+		cxResult.AllResponded = false
+		return cxResult, err
+	}
+
+	connectWait := &sync.WaitGroup{}
+	allInstances := map[string]*InformerInstance{}
+	for _, remote := range cfg.Remotes {
+		i := &InformerInstance{
+			Address: remote,
+		}
+		allInstances[remote] = i
+		connectWait.Add(1)
+		go func() {
+			i.Connect(cfg.MaxTries)
+			connectWait.Done()
+		}()
+	}
+
+	connectWait.Wait()
+
+	for _, instance := range allInstances {
+		if instance.Error != nil {
+			cxResult.AllResponded = false
+			return cxResult, err
 		}
 	}
-	if !allSuccess {
+
+	allHashes := make([]string, 0, len(cfg.Remotes))
+remotes:
+	for _, remote := range cfg.Remotes {
+		reportRes := r.Report("CX %s", remote)
+		success := false
+		if !success {
+			reportRes.Fail("No connection established")
+			cxResult.AllResponded = false
+		}
+	}
+	if !cxResult.AllResponded {
 		log.Printf("At least one host failed, running checks locally")
-		return true
+		return cxResult
 	}
 
-	log.Println("Waiting for other servers")
-	waitForOthers.Wait()
-	log.Println("Wait complete")
+	sort.Strings(allHashes)
 
-	if isLowest {
-		log.Printf("I am the lowest: %s\n", myID)
-		return true
+	myIndex := -1
+	for i, h := range allHashes {
+		if h == myID {
+			myIndex = i
+		}
 	}
-	log.Println("Not elected, I'm done")
-	return false
+	if myIndex < 0 {
+		cxResult.AllResponded = false
+		return cxResult
+	}
+
+	cxResult.Offset = myIndex
+
+	return cxResult
 }
