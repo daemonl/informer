@@ -26,7 +26,7 @@ func (t *CommandCheck) GetName() string {
 
 func (t *CommandCheck) RunCheck(reporter *reporter.Reporter) error {
 	res := reporter.Report("Run command %s", t.Command)
-	c := exec.Command(t.WorkingDirectory+"/"+t.Command, t.Args...)
+	c := exec.Command(t.Command, t.Args...)
 	c.Dir = t.WorkingDirectory
 	for _, envVar := range t.Environment {
 		c.Env = append(c.Env, fmt.Sprintf("%s=%s", envVar.Name, envVar.Value))
