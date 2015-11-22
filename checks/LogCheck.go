@@ -15,6 +15,15 @@ type LogCheck struct {
 	Regexp      string `xml:"regex"`
 }
 
+func (t *LogCheck) GetHash() string {
+	return hashFromf("LOG:%s %s %s %s",
+		t.Format,
+		t.QuietPeriod,
+		t.Regexp,
+		t.Request.HashBase(),
+	)
+}
+
 func (t *LogCheck) RunCheck(r *reporter.Reporter) error {
 
 	resp, err := t.Request.DoRequest()

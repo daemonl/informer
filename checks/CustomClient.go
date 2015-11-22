@@ -15,6 +15,20 @@ type CustomClient struct {
 	Timeout  int64   `xml:"timeout,attr"`
 }
 
+func (c *CustomClient) HashBase() string {
+	if c == nil {
+		return ""
+	}
+	s := fmt.Sprintf("%b %d", c.Insecure, c.Timeout)
+	if c.CertFile != nil {
+		s += " " + *c.CertFile
+	}
+	if c.KeyFile != nil {
+		s += " " + *c.KeyFile
+	}
+	return s
+}
+
 func (c *CustomClient) GetClient() (*http.Client, error) {
 	if c == nil {
 		client := &http.Client{}

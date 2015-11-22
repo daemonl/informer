@@ -5,13 +5,18 @@ import (
 	"math"
 	"net/url"
 	"strings"
+	"time"
+
+	"github.com/daemonl/informer/reporter"
 )
-import "github.com/daemonl/informer/reporter"
-import "time"
 
 type CertificateCheck struct {
 	URL  string `xml:"url,attr"`
 	Days uint64 `xml:"days"`
+}
+
+func (t *CertificateCheck) GetHash() string {
+	return hashFromf("CERT:%s %s", t.URL, t.Days)
 }
 
 func (t *CertificateCheck) GetName() string {

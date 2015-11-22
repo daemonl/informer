@@ -16,6 +16,10 @@ type JSONCheck struct {
 	CheckFields []JSONFieldCheck `xml:",any"`
 }
 
+func (t *JSONCheck) GetHash() string {
+	return hashFromf("JSON:%s %s", t.CheckFields, t.Request.HashBase())
+}
+
 type JSONElemDef struct {
 	Key string `xml:"key,attr"`
 }
