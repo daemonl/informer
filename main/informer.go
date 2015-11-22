@@ -116,6 +116,7 @@ func main() {
 			defer func() { times[name] = time.Now().Unix() - start }()
 			for _, group := range sg {
 				r := reporter.GetRoot(group.Name)
+				r.ID = group.GetHash()
 				for _, check := range group.Checks {
 					err := check.RunCheck(r)
 					if err != nil {

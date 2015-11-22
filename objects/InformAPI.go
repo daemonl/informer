@@ -8,28 +8,28 @@ import (
 
 type InformAPI struct {
 	Name     string `xml:"name,attr"`
-	Url      string `xml:"url"`
-	Method   string `xml:"method"`
+	Url      string `xml:"url,omitempty"`
+	Method   string `xml:"method,omitempty"`
 	PostVals []struct {
 		Key string `xml:"key,attr"`
 		Val string `xml:",innerxml"`
-	} `xml:"postval"`
+	} `xml:"postval,omitempty"`
 }
 
-func (a *InformAPI) Call(title string, body string) {
+type InformParams map[string]string
+
+func (a *InformAPI) Call(p InformParams) {
 
 	switch a.Method {
 	case "POSTFORM":
 		data := url.Values{}
-		for _, v := range a.PostVals {
-			switch v.Val {
-			case "#title":
-				v.Val = title
-			case "#body":
-				v.Val = body
+		for _, postVal := range a.PostVals {
+			for replaceKey, replaceVal := range p {
+				if postVal.Key == "#"+replaceKey {
+					postVal.Val = replaceVal
+				}
 			}
-			data.Add(v.Key, v.Val)
-
+			data.Add(postVal.Key, postVal.Val)
 		}
 		_, err := http.PostForm(a.Url, data)
 		if err != nil {

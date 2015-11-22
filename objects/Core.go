@@ -11,6 +11,7 @@ import (
 
 type Core struct {
 	Mailer     *Mailer              `xml:"smtp"`
+	Channels   []InformChannel      `xml:"chan"`
 	Apis       []InformAPI          `xml:"api"`
 	Admins     Informants           `xml:"admins"`
 	Crosscheck *crosscheck.CXConfig `xml:"crosscheck"`
@@ -24,6 +25,14 @@ type Group struct {
 	RunGroup  string `xml:"run,attr"`
 	Name      string `xml:"name,attr"`
 	SyncGroup string `xml:"sync,attr"`
+}
+
+func (g *Group) GetHash() string {
+	h := ""
+	for _, check := range g.Checks {
+		h += check.GetHash()
+	}
+	return h
 }
 
 type Checks []Check

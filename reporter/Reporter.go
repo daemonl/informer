@@ -8,6 +8,7 @@ type Reporter struct {
 	Reports  []*Report
 	Name     string
 	Errors   []error
+	ID       string
 	Parent   *Reporter
 	Children []*Reporter
 }
