@@ -23,7 +23,7 @@ var dryRun bool
 func init() {
 	flag.StringVar(&configDir, "config", "/etc/informer/conf.d/", "Config directory")
 	flag.StringVar(&runGroup, "group", "", "When set, only run this group, otherwise runs root")
-	flag.BoolVar(&dryRun, "dry", false, "When true, won't send mail or API calls")
+	flag.BoolVar(&dryRun, "dry", false, "When true, won't send mail or call APIs")
 }
 
 func flagWg(wg *sync.WaitGroup, donechan chan bool) {
