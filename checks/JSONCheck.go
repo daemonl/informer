@@ -129,11 +129,11 @@ func (je JSONElem) GetFloat() (float64, error) {
 	}
 }
 
-func (je JSONElem) Failf(msg string, params ...interface{}) {
+func (je *JSONElem) Failf(msg string, params ...interface{}) {
 	je.Fail(fmt.Sprintf(msg, params...))
 }
 
-func (je JSONElem) Fail(msg string) {
+func (je *JSONElem) Fail(msg string) {
 	je.Fails = append(je.Fails, fmt.Sprintf("Elem %s: %s", je.Key, msg))
 }
 
