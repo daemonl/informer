@@ -19,11 +19,13 @@ import (
 var configDir string
 var runGroup string
 var dryRun bool
+var solo bool
 
 func init() {
 	flag.StringVar(&configDir, "config", "/etc/informer/conf.d/", "Config directory")
 	flag.StringVar(&runGroup, "group", "", "When set, only run this group, otherwise runs root")
 	flag.BoolVar(&dryRun, "dry", false, "When true, won't send mail or call APIs")
+	flag.BoolVar(&solo, "solo", false, "Skip Crosschecks")
 }
 
 func flagWg(wg *sync.WaitGroup, donechan chan bool) {
@@ -57,7 +59,7 @@ func loadConfig(dirName string) (*objects.Core, error) {
 		decoder := xml.NewDecoder(file)
 		err = decoder.Decode(&cfg)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("Decoding %s: %s", fInfo.Name(), err.Error())
 		}
 	}
 
@@ -74,7 +76,7 @@ func main() {
 		return
 	}
 
-	if core.Crosscheck != nil {
+	if !solo && core.Crosscheck != nil {
 
 		configHash, err := crosscheck.XmlHash(core)
 		if err != nil {
