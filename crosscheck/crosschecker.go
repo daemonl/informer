@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -20,6 +21,11 @@ type CXConfig struct {
 	Bind     string   `xml:"bind"`
 	Remotes  []string `xml:"remote"`
 	MaxTries int      `xml:"max"`
+}
+
+// The crosscheck config shouldn't effect the config comparrison
+func (cfg *CXConfig) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
+	return nil
 }
 
 func XmlHash(o interface{}) (string, error) {
@@ -54,14 +60,29 @@ func Crosscheck(cfg *CXConfig, configHash string, r *reporter.Reporter) bool {
 		log.Printf("Was pinged by %s\n", id)
 		waitForOthers.Done()
 		fmt.Fprintf(w, "%s\n%s", myID, configHash)
-
 	})
 
+	closeListener := make(chan struct{})
+
 	go func() {
-		err := http.ListenAndServe(cfg.Bind, mux)
+		var listener net.Listener
+		defer func() {
+			<-closeListener
+			if listener != nil {
+				listener.Close()
+			}
+		}()
+		listener, err := net.Listen("tcp", cfg.Bind)
 		if err != nil {
-			log.Printf("Can't serve for CX: %s\n", err.Error())
+			log.Printf("Can't listen for CX: %s\n", err.Error())
+			return
 		}
+		go func() {
+			err = http.Serve(listener, mux)
+			if err != nil {
+				log.Printf("Can't serve for CX: %s\n", err.Error())
+			}
+		}()
 	}()
 
 	isLowest := true
@@ -117,7 +138,9 @@ remotes:
 
 	log.Println("Waiting for other servers")
 	waitForOthers.Wait()
-	log.Println("Wait complete")
+	log.Println("Wait complete, Stop Server")
+	closeListener <- struct{}{}
+	log.Println("Stopped Server")
 
 	if isLowest {
 		log.Printf("I am the lowest: %s\n", myID)

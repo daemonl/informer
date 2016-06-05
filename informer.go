@@ -44,7 +44,16 @@ func loadConfig(dirName string) (*objects.Core, error) {
 	if err != nil {
 		return nil, err
 	}
+	s, err := dir.Stat()
+	if err != nil {
+		return nil, err
+	}
 	cfg := &objects.Core{}
+	if !s.IsDir() {
+		decoder := xml.NewDecoder(dir)
+		err = decoder.Decode(&cfg)
+		return cfg, err
+	}
 
 	files, err := dir.Readdir(-1)
 	if err != nil {

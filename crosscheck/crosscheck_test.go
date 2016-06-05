@@ -28,7 +28,7 @@ func TestCrosscheck(t *testing.T) {
 			elected := Crosscheck(&CXConfig{
 				Bind:    ":" + port,
 				Remotes: allRemotes,
-			}, r.Spawn("Child %s", port))
+			}, "asdf", r.Spawn("Child %s", port))
 			if elected {
 				anyGotElected = true
 			}
@@ -51,7 +51,7 @@ func TestCrosscheck(t *testing.T) {
 				Bind:     ":" + port,
 				Remotes:  allRemotes,
 				MaxTries: 1,
-			}, r.Spawn("Child %s", port))
+			}, "asdf", r.Spawn("Child %s", port))
 			if !elected {
 				t.Log("Host not elected on fail")
 				t.Fail()

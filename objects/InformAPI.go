@@ -25,7 +25,7 @@ func (a *InformAPI) Call(p InformParams) {
 		data := url.Values{}
 		for _, postVal := range a.PostVals {
 			for replaceKey, replaceVal := range p {
-				if postVal.Key == "#"+replaceKey {
+				if postVal.Val == "#"+replaceKey {
 					postVal.Val = replaceVal
 				}
 			}

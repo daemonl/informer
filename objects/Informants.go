@@ -10,7 +10,7 @@ import (
 
 type Informants struct {
 	Methods []struct {
-		Channel string `xml:"chan,attr`
+		Channel string `xml:"chan,attr"`
 	} `xml:"inform"`
 }
 
