@@ -1,6 +1,8 @@
 package objects
 
 import (
+	"bytes"
+	"encoding/json"
 	"log"
 	"net/http"
 	"net/url"
@@ -32,6 +34,22 @@ func (a *InformAPI) Call(p InformParams) {
 			data.Add(postVal.Key, postVal.Val)
 		}
 		_, err := http.PostForm(a.Url, data)
+		if err != nil {
+			log.Println(err)
+		}
+	case "JSON":
+		data := map[string]string{}
+		for _, postVal := range a.PostVals {
+			for replaceKey, replaceVal := range p {
+				if postVal.Val == "#"+replaceKey {
+					postVal.Val = replaceVal
+				}
+			}
+			data[postVal.Key] = postVal.Val
+		}
+		dataReaderBytes, _ := json.Marshal(data)
+		dataReader := bytes.NewBuffer(dataReaderBytes)
+		_, err := http.Post(a.Url, "application/json", dataReader)
 		if err != nil {
 			log.Println(err)
 		}
