@@ -9,8 +9,8 @@ import (
 )
 
 type CustomClient struct {
-	CertFile *string `xml:"cert"`
-	KeyFile  *string `xml:"key"`
+	Cert     *[]byte `xml:"cert"`
+	Key      *[]byte `xml:"key"`
 	Insecure bool    `xml:"insecure,attr"`
 	Timeout  int64   `xml:"timeout,attr"`
 }
@@ -20,12 +20,6 @@ func (c *CustomClient) HashBase() string {
 		return ""
 	}
 	s := fmt.Sprintf("%b %d", c.Insecure, c.Timeout)
-	if c.CertFile != nil {
-		s += " " + *c.CertFile
-	}
-	if c.KeyFile != nil {
-		s += " " + *c.KeyFile
-	}
 	return s
 }
 
@@ -41,22 +35,21 @@ func (c *CustomClient) GetClient() (*http.Client, error) {
 	}
 	tr.ResponseHeaderTimeout = time.Duration(c.Timeout) * time.Second
 
-	if c.CertFile != nil || c.KeyFile != nil {
+	if c.Cert != nil || c.Key != nil {
 
-		if c.CertFile == nil || c.KeyFile == nil {
+		if c.Cert == nil || c.Key == nil {
 			return nil, fmt.Errorf("Either both or neither key and cert must be set for custom clients")
-		}
-		clientCertificate, err := tls.LoadX509KeyPair(*c.CertFile, *c.KeyFile)
-		if err != nil {
-			return nil, err
 		}
 
 		if tr.TLSClientConfig == nil {
 			tr.TLSClientConfig = &tls.Config{}
 		}
-		tr.TLSClientConfig.Certificates = []tls.Certificate{
-			clientCertificate,
+
+		cert, err := tls.X509KeyPair(*c.Cert, *c.Key)
+		if err != nil {
+			return nil, err
 		}
+		tr.TLSClientConfig.Certificates = []tls.Certificate{cert}
 	}
 
 	if c.Insecure {

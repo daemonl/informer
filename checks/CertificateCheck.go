@@ -12,7 +12,7 @@ import (
 
 type CertificateCheck struct {
 	URL  string `xml:"url,attr"`
-	Days uint64 `xml:"days"`
+	Days uint64 `xml:"days,attr"`
 }
 
 func (t *CertificateCheck) GetHash() string {

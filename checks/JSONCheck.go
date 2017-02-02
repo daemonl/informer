@@ -34,13 +34,19 @@ func (je *JSONElemDef) GetElemDef() *JSONElemDef {
 type JSONTimeDef struct {
 	*JSONElemDef
 	Age    string `xml:"age"`
-	Format string `xml:"format"`
+	Format string `xml:"format,attr"`
 }
 
 type JSONNumberDef struct {
 	*JSONElemDef
 	Min *float64 `xml:"min"`
 	Max *float64 `xml:"max"`
+	Eq  *float64 `xml:"eq"`
+	Neq *float64 `xml:"neq"`
+}
+
+type JSONStringDef struct {
+	*JSONElemDef
 	Eq  *float64 `xml:"eq"`
 	Neq *float64 `xml:"neq"`
 }
@@ -61,6 +67,8 @@ func (jfc *JSONFieldCheck) UnmarshalXML(d *xml.Decoder, start xml.StartElement) 
 		jfc.JSONFieldCheckDef = &JSONTimeDef{}
 	case "number":
 		jfc.JSONFieldCheckDef = &JSONNumberDef{}
+	case "string":
+		jfc.JSONFieldCheckDef = &JSONStringDef{}
 	default:
 		return fmt.Errorf("No JSON Field check type %s", start.Name.Local)
 	}
@@ -161,6 +169,9 @@ func (jt *JSONTimeDef) Check(je *JSONElem) error {
 		}
 		t = time.Unix(i, 0)
 	} else {
+		if jt.Format == "RFC3339" {
+			jt.Format = time.RFC3339
+		}
 		t, err = time.Parse(jt.Format, je.GetString())
 		if err != nil {
 			return err
@@ -195,11 +206,24 @@ func (jt *JSONNumberDef) Check(je *JSONElem) error {
 		je.Failf("%f != %f", val, *jt.Eq)
 	}
 	if jt.Neq != nil && val == *jt.Neq {
-		je.Failf("Elem %s: %f == %f", val, *jt.Neq)
+		je.Failf("%f == %f", val, *jt.Neq)
 	}
 	return nil
 }
 
+func (jt *JSONStringDef) Check(je *JSONElem) error {
+	val, err := je.GetFloat()
+	if err != nil {
+		return err
+	}
+	if jt.Eq != nil && val != *jt.Eq {
+		je.Failf("%f != %f", val, *jt.Eq)
+	}
+	if jt.Neq != nil && val == *jt.Neq {
+		je.Failf("%f == %f", val, *jt.Neq)
+	}
+	return nil
+}
 func (t *JSONCheck) RunCheck(r *reporter.Reporter) error {
 	rChild := r.Spawn("JSON Check %s", t.GetName())
 
