@@ -214,10 +214,10 @@ func (jt *JSONNumberDef) Check(je *JSONElem) error {
 func (jt *JSONStringDef) Check(je *JSONElem) error {
 	val := je.GetString()
 	if jt.Eq != nil && val != *jt.Eq {
-		je.Failf("%f != %f", val, *jt.Eq)
+		je.Failf("%s != %s", val, *jt.Eq)
 	}
 	if jt.Neq != nil && val == *jt.Neq {
-		je.Failf("%f == %f", val, *jt.Neq)
+		je.Failf("%s == %s", val, *jt.Neq)
 	}
 	return nil
 }
