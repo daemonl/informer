@@ -47,8 +47,8 @@ type JSONNumberDef struct {
 
 type JSONStringDef struct {
 	*JSONElemDef
-	Eq  *float64 `xml:"eq"`
-	Neq *float64 `xml:"neq"`
+	Eq  *string `xml:"eq"`
+	Neq *string `xml:"neq"`
 }
 
 type JSONFieldCheck struct {
@@ -212,10 +212,7 @@ func (jt *JSONNumberDef) Check(je *JSONElem) error {
 }
 
 func (jt *JSONStringDef) Check(je *JSONElem) error {
-	val, err := je.GetFloat()
-	if err != nil {
-		return err
-	}
+	val := je.GetString()
 	if jt.Eq != nil && val != *jt.Eq {
 		je.Failf("%f != %f", val, *jt.Eq)
 	}
