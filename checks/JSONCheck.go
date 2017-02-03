@@ -1,6 +1,7 @@
 package checks
 
 import (
+	"bytes"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
@@ -13,11 +14,43 @@ import (
 
 type JSONCheck struct {
 	Request
-	CheckFields []JSONFieldCheck `xml:",any"`
+	LogFullObject bool             `xml:"full-log,attr"`
+	CheckFields   []JSONFieldCheck `xml:",any"`
 }
 
 func (t *JSONCheck) GetHash() string {
 	return hashFromf("JSON:%s %s", t.CheckFields, t.Request.HashBase())
+}
+
+func (t *JSONCheck) RunCheck(r *reporter.Reporter) error {
+	rChild := r.Spawn("JSON Check %s", t.GetName())
+
+	reader, err := t.Request.GetReader()
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+	dec := json.NewDecoder(reader)
+	data := map[string]interface{}{}
+	dec.Decode(&data)
+	ctx := &JSONContext{
+		Data:     data,
+		Reporter: rChild,
+	}
+
+	for _, test := range t.CheckFields {
+		test.DoChecks(ctx, rChild)
+	}
+	if t.LogFullObject && len(rChild.CollectWarnings()) > 0 {
+		res := r.Report("Any Fail")
+		buff := &bytes.Buffer{}
+		enc := json.NewEncoder(buff)
+		enc.SetIndent("", "  ")
+		enc.Encode(data)
+		res.Fail("Full JSON Object with error \n%s", buff.String())
+	}
+
+	return nil
 }
 
 type JSONElemDef struct {
@@ -219,27 +252,5 @@ func (jt *JSONStringDef) Check(je *JSONElem) error {
 	if jt.Neq != nil && val == *jt.Neq {
 		je.Failf("%s == %s", val, *jt.Neq)
 	}
-	return nil
-}
-func (t *JSONCheck) RunCheck(r *reporter.Reporter) error {
-	rChild := r.Spawn("JSON Check %s", t.GetName())
-
-	reader, err := t.Request.GetReader()
-	if err != nil {
-		return err
-	}
-	defer reader.Close()
-	dec := json.NewDecoder(reader)
-	data := map[string]interface{}{}
-	dec.Decode(&data)
-	ctx := &JSONContext{
-		Data:     data,
-		Reporter: rChild,
-	}
-
-	for _, test := range t.CheckFields {
-		test.DoChecks(ctx, rChild)
-	}
-
 	return nil
 }
