@@ -85,67 +85,6 @@ func main() {
 		return
 	}
 
-	if !solo && core.Crosscheck != nil {
-
-		configHash, err := crosscheck.XmlHash(core)
-		if err != nil {
-			log.Printf("Couldn't encode config: %s\n", err.Error())
-		}
-		log.Printf("Config %s\n", configHash)
-		r := reporter.GetRoot("Crosscheck")
-		elected := crosscheck.Crosscheck(core.Crosscheck, configHash, r)
-		r.DumpReport()
-		if !dryRun {
-			core.DoWarnings(r, &core.Admins)
-		}
-		if !elected {
-			return
-		}
-	}
-
-	list := map[string][]objects.Group{}
-
-	for _, group := range core.Groups {
-		// Matches "", which is 'unspecified'
-		if runGroup == "all" || runGroup == group.RunGroup {
-			_, ok := list[group.SyncGroup]
-			if !ok {
-				list[group.SyncGroup] = []objects.Group{}
-			}
-			list[group.SyncGroup] = append(list[group.SyncGroup], group)
-		}
-	}
-
-	times := map[string]int64{}
-	wg := sync.WaitGroup{}
-	for name, sg := range list {
-		//fmt.Printf("Run sync %s - %d groups\n", name, len(sg))
-		wg.Add(1)
-		go func(name string, sg []objects.Group) {
-			defer wg.Done()
-			start := time.Now().Unix()
-			defer func() { times[name] = time.Now().Unix() - start }()
-			for _, group := range sg {
-				r := reporter.GetRoot(group.Name)
-				r.ID = group.GetHash()
-				for _, check := range group.Checks {
-					err := check.RunCheck(r)
-					if err != nil {
-						r.AddError(err)
-					}
-				}
-				r.DumpReport()
-				if !dryRun {
-					core.DoWarnings(r, &group.Informants)
-				}
-			}
-
-		}(name, sg)
-	}
-	wg.Wait()
-
-	for name, seconds := range times {
-		fmt.Printf("%s took %d seconds\n", name, seconds)
-	}
+	core.Run()
 
 }

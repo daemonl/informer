@@ -3,6 +3,8 @@ package objects
 import (
 	"encoding/xml"
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/daemonl/informer/checks"
 	"github.com/daemonl/informer/crosscheck"
@@ -17,6 +19,49 @@ type Core struct {
 	Crosscheck *crosscheck.CXConfig `xml:"crosscheck"`
 	Group
 	Groups []Group `xml:"group"`
+}
+
+func (core Core) Run(runGroup string) {
+
+	list := map[string][]Group{}
+
+	for _, group := range core.Groups {
+		// Matches "", which is 'unspecified'
+		if runGroup == "all" || runGroup == group.RunGroup {
+			_, ok := list[group.SyncGroup]
+			if !ok {
+				list[group.SyncGroup] = []Group{}
+			}
+			list[group.SyncGroup] = append(list[group.SyncGroup], group)
+		}
+	}
+
+	wg := sync.WaitGroup{}
+	for name, sg := range list {
+		//fmt.Printf("Run sync %s - %d groups\n", name, len(sg))
+		wg.Add(1)
+		go func(name string, sg []Group) {
+			defer wg.Done()
+			start := time.Now().Unix()
+			defer func() {
+				duration := time.Now().Unix() - start
+				fmt.Printf("%s took %d seconds\n", name, duration)
+			}()
+			for _, group := range sg {
+				r := reporter.GetRoot(group.Name)
+				r.ID = group.GetHash()
+				for _, check := range group.Checks {
+					err := check.RunCheck(r)
+					if err != nil {
+						r.AddError(err)
+					}
+				}
+				r.DumpReport()
+			}
+
+		}(name, sg)
+	}
+	wg.Wait()
 }
 
 type Group struct {
