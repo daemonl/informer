@@ -57,6 +57,7 @@ func (core Core) Run(runGroup string) {
 					}
 				}
 				r.DumpReport()
+				core.DoWarnings(r, group.Informants)
 			}
 
 		}(name, sg)

@@ -4,14 +4,10 @@ import (
 	"encoding/xml"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"sort"
-	"time"
 
-	"github.com/daemonl/informer/crosscheck"
 	"github.com/daemonl/informer/objects"
-	"github.com/daemonl/informer/reporter"
 
 	"sync"
 )
@@ -85,6 +81,6 @@ func main() {
 		return
 	}
 
-	core.Run()
+	core.Run(runGroup)
 
 }

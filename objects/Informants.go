@@ -26,14 +26,16 @@ type InformChannel struct {
 
 func (i *InformChannel) Call(core *Core, params InformParams) {
 	for _, email := range i.Emails {
+		log.Printf("Send Email to %s (%s)", email.Address, params["subject"])
 		core.Mailer.SendEmail(email.Address, params["subject"], params["body"])
 	}
 	for _, api := range i.Apis {
+		log.Printf("Call API %s (%s)", api.Name, params["subject"])
 		DoApi(core, api.Name, params)
 	}
 }
 
-func (core *Core) DoWarnings(r *reporter.Reporter, i *Informants) {
+func (core *Core) DoWarnings(r *reporter.Reporter, i Informants) {
 
 	warnings := r.CollectWarnings()
 	if len(warnings) < 1 {
@@ -51,6 +53,7 @@ func (core *Core) DoWarnings(r *reporter.Reporter, i *Informants) {
 		"body":     body,
 		"id":       errId,
 	}
+
 	for _, method := range i.Methods {
 		if len(method.Channel) > 0 {
 			DoChannel(core, method.Channel, params)
