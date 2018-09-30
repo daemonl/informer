@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<informer>
-	<crosscheck>
-		<bind>:5552</bind>
-		<remote>http://localhost:5551</remote>
-		<remote>http://localhost:5552</remote>
-	</crosscheck>
-</informer>

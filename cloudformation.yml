@@ -1,0 +1,58 @@
+---
+
+Parameters:
+  DockerImage:
+    Type: String
+
+Resources:
+  ECSTask:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: informer
+      ContainerDefinitions:
+        - Name: "informer"
+          Image: !Ref DockerImage
+          Memory: 128
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: informer
+              awslogs-region: ap-southeast-2
+              awslogs-stream-prefix: informer
+
+  ScheduledTask:
+    Type: AWS::Events::Rule
+    Properties:
+      ScheduleExpression: "cron(/5 * * * ? *)"
+      State: ENABLED
+      Targets:
+        - Id: Task
+          EcsParameters:
+            TaskDefinitionArn: !Ref ECSTask
+            TaskCount: 1
+          RoleArn: !Join
+            - ':'
+            - - "arn:aws:iam"
+              - ""
+              - !Ref "AWS::AccountId"
+              - "role/ecsEventsRole"
+          Arn: !Join
+            - ':'
+            - - "arn:aws:ecs"
+              - !Ref "AWS::Region"
+              - !Ref "AWS::AccountId"
+              - "cluster/default"
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ecs.amazonaws.com
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
