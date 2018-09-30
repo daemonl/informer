@@ -4,6 +4,7 @@ PROJECT_NAME=informer
 
 AWS_ACCOUNT=$(shell aws sts get-caller-identity | jq -r '.Account')
 AWS_REGION=$(shell aws configure get region)
+AWS_ACCOUNT_NAME=$(shell aws iam list-account-aliases --max-items 1 | jq -r '.AccountAliases[0]')
 DOCKER_ROOT=$(AWS_ACCOUNT).dkr.ecr.$(AWS_REGION).amazonaws.com/$(PROJECT_NAME)
 
 test:
@@ -21,10 +22,14 @@ ecr/push: ecr/exists docker/build
 	docker push $(DOCKER_ROOT):$(VERSION)
 	docker push $(DOCKER_ROOT):latest
 
-cf/%: ecr/push
+s3/upload:
+	aws s3 cp --recursive conf.d s3://informer.$(AWS_ACCOUNT_NAME)/conf.d
+
+cf/%: ecr/push s3/upload
 	aws cloudformation $*-stack \
 		--stack-name $(PROJECT_NAME) \
 		--template-body file://./cloudformation.yml \
 		--parameters ParameterKey=DockerImage,ParameterValue=$(DOCKER_ROOT):$(VERSION) \
+			ParameterKey=Config,ParameterValue=s3://informer.$(AWS_ACCOUNT_NAME)/conf.d \
 		--capabilities CAPABILITY_IAM
 

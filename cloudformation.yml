@@ -3,6 +3,8 @@
 Parameters:
   DockerImage:
     Type: String
+  Config:
+    Type: String
 
 Resources:
   ECSTask:
@@ -13,6 +15,13 @@ Resources:
         - Name: "informer"
           Image: !Ref DockerImage
           Memory: 128
+          Command:
+            - "/informer"
+            - "--config"
+            - !Ref Config
+          Environment:
+            - Name: AWS_REGION
+              Value: !Ref "AWS::Region"
           LogConfiguration:
             LogDriver: awslogs
             Options:

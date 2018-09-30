@@ -5,8 +5,12 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 	"sort"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/daemonl/informer/objects"
 
 	"sync"
@@ -36,6 +40,11 @@ func (s FilesByName) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s FilesByName) Less(i, j int) bool { return s[i].Name() < s[j].Name() }
 
 func loadConfig(dirName string) (*objects.Core, error) {
+
+	if bucket, key, match := s3Components(configDir); match {
+		return loadS3Config(bucket, key)
+	}
+
 	dir, err := os.Open(os.ExpandEnv(dirName))
 	if err != nil {
 		return nil, err
@@ -71,6 +80,40 @@ func loadConfig(dirName string) (*objects.Core, error) {
 	return cfg, nil
 }
 
+func loadS3Config(bucket, key string) (*objects.Core, error) {
+	sess, err := session.NewSession()
+	if err != nil {
+		return nil, err
+	}
+	client := s3.New(sess)
+
+	listOutput, err := client.ListObjects(&s3.ListObjectsInput{
+		Prefix: aws.String(key),
+		Bucket: aws.String(bucket),
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := &objects.Core{}
+	for _, val := range listOutput.Contents {
+		getOutput, err := client.GetObject(&s3.GetObjectInput{
+			Bucket: aws.String(bucket),
+			Key:    val.Key,
+		})
+		if err != nil {
+			return nil, err
+		}
+		if err := xml.NewDecoder(getOutput.Body).Decode(&cfg); err != nil {
+			return nil, err
+		}
+	}
+	return cfg, nil
+}
+
+var reS3Bucket = regexp.MustCompile(`s3://([^/]+)/(.*)`)
+
 func main() {
 	flag.Parse()
 
@@ -82,5 +125,18 @@ func main() {
 	}
 
 	core.Run(runGroup)
+
+}
+
+func s3Components(name string) (string, string, bool) {
+	s3Parts := reS3Bucket.FindStringSubmatch(name)
+	if len(s3Parts) < 2 {
+		return "", "", false
+	}
+
+	bucket := s3Parts[1]
+	key := s3Parts[2]
+
+	return bucket, key, true
 
 }
